@@ -38,7 +38,15 @@ public class SubRedditFragment extends Fragment {
     private List<Child> mChildren = new ArrayList<>();
     private SubRedditAdapter mAdapter;
 
+    private static int mCurrentPage;
+    private String lastPost = "";
+
     public static SubRedditFragment newInstance() {
+        return new SubRedditFragment();
+    }
+
+    public static SubRedditFragment newInstancePager(int currentPage) {
+        mCurrentPage = currentPage;
         return new SubRedditFragment();
     }
 
@@ -80,28 +88,7 @@ public class SubRedditFragment extends Fragment {
         mSubRedditRecyclerView = (RecyclerView) view.findViewById(R.id.post_recycler_view);
         mSubRedditRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
-        Retrofit.Builder builder = new Retrofit.Builder()
-                .baseUrl("https://www.reddit.com/")
-                .addConverterFactory(GsonConverterFactory.create());
-
-        Retrofit retrofit = builder.build();
-
-        RedditClient client = retrofit.create(RedditClient.class);
-        Call<RedditJSON> call = client.jsonForSubreddit("3DS");
-
-        call.enqueue(new Callback<RedditJSON>() {
-            @Override
-            public void onResponse(Call<RedditJSON> call, Response<RedditJSON> response) {
-                mChildren = response.body().getData().getChildren();
-                updateUI();
-            }
-
-            @Override
-            public void onFailure(Call<RedditJSON> call, Throwable t) {
-                t.printStackTrace();
-                Toast.makeText(getActivity(), "It naah work", Toast.LENGTH_SHORT).show();
-            }
-        });
+        setupURL("3DS", mCurrentPage);
 
 //        Log.d(TAG, "onCreateView: post size 1 is " + mChildren.size());
 //        List<Child> posts = mChildren;
@@ -183,6 +170,54 @@ public class SubRedditFragment extends Fragment {
         } else {
             mAdapter.setPosts(posts);
             mAdapter.notifyDataSetChanged();
+        }
+    }
+
+    private void setupURL(String subReddit, int currentPage) {
+        Retrofit.Builder builder = new Retrofit.Builder()
+                .baseUrl("https://www.reddit.com/")
+                .addConverterFactory(GsonConverterFactory.create());
+
+        Retrofit retrofit = builder.build();
+
+        RedditClient client = retrofit.create(RedditClient.class);
+
+        if(currentPage > 0) {
+            int postNum = currentPage * 25;
+            String postId = lastPost;
+            Call<RedditJSON> call = client.jsonForSubredditPageNum(subReddit, String.valueOf(postNum), postId);
+
+            call.enqueue(new Callback<RedditJSON>() {
+                @Override
+                public void onResponse(Call<RedditJSON> call, Response<RedditJSON> response) {
+                    mChildren = response.body().getData().getChildren();
+                    lastPost = (String) response.body().getData().getAfter();
+                    updateUI();
+                }
+
+                @Override
+                public void onFailure(Call<RedditJSON> call, Throwable t) {
+                    t.printStackTrace();
+                    Toast.makeText(getActivity(), "It naah work", Toast.LENGTH_SHORT).show();
+                }
+            });
+        } else {
+            Call<RedditJSON> call = client.jsonForSubreddit(subReddit);
+
+            call.enqueue(new Callback<RedditJSON>() {
+                @Override
+                public void onResponse(Call<RedditJSON> call, Response<RedditJSON> response) {
+                    mChildren = response.body().getData().getChildren();
+                    lastPost = (String) response.body().getData().getAfter();
+                    updateUI();
+                }
+
+                @Override
+                public void onFailure(Call<RedditJSON> call, Throwable t) {
+                    t.printStackTrace();
+                    Toast.makeText(getActivity(), "It naah work", Toast.LENGTH_SHORT).show();
+                }
+            });
         }
     }
 }

@@ -14,4 +14,7 @@ public interface RedditClient {
 
     @GET("/r/{subReddit}/.json")
     Call<RedditJSON> jsonForSubreddit(@Path("subReddit") String subreddit);
+
+    @GET("/r/{subReddit}/.json?count={postNum}&after={postId}")
+    Call<RedditJSON> jsonForSubredditPageNum(@Path("subReddit") String subReddit, @Path("postNum") String postNum, @Path("postId") String postId);
 }
